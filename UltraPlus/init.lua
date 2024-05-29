@@ -306,9 +306,7 @@ local function EnableRegir(state)
         SetOption("Editor/ReGIR", "UseForDI", state)
     end)
 
-    if not GetOption("RayTracing", "EnableNRD") then
         SetOption("Editor/RTXDI", "EnableSeparateDenoising", state)
-    end
     config.regirActive = state
 end
 
