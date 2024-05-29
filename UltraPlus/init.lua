@@ -33,7 +33,6 @@ local config = {
     regirActive = false,
     nrdEnabled = false,
     gameLoaded = false,
-    FOV = 0.0,
 }
 local timer = {
     lazy = 0,
@@ -304,9 +303,9 @@ local function EnableRegir(state)
 
     Wait(seconds, function()
         SetOption("Editor/ReGIR", "UseForDI", state)
-    end)
-
         SetOption("Editor/RTXDI", "EnableSeparateDenoising", state)
+    end)
+    -- DoRefreshEngine()
     config.regirActive = state
 end
 
@@ -349,11 +348,10 @@ end
 function DoRefreshEngine()
     -- hack to force the engine to warm reload
     logger.info("Refreshing Engine...")
-    local jitter = 0.0001
-    Game.GetPlayer():GetFPPCameraComponent():SetFOV(config.FOV + jitter)
-    Wait(1.5, function()
-        Game.GetPlayer():GetFPPCameraComponent():SetFOV(config.FOV)
-        logger.info("Done. If there are still problems please (re)load a save game")
+    SetOption("Editor/ReGIR", "UseForDI", false)
+    Wait(0.5, function()
+        SetOption("Editor/ReGIR", "UseForDI", true)
+        logger.info("Done")
     end)
 end
 
@@ -460,14 +458,31 @@ registerForEvent("onTweak", function()
 end)
 
 registerForEvent("onInit", function()
-    config.FOV = Game.GetPlayer():GetFPPCameraComponent():GetFOV()
-    
-    Observe('QuestTrackerGameController', 'OnInitialize', function()
+    Observe('QuestTrackerGameController', 'OnInitialize', function(this)
+        logger.info("Entered game Observe", this)
         DoGameSessionStart()
     end)
 
-    Observe('QuestTrackerGameController', 'OnUninitialize', function()
+    ObserveAfter('QuestTrackerGameController', 'OnInitialize', function(this)
+        logger.info("Entered game ObserveAfter", this)
+        DoGameSessionStart()
+    end)
+
+    Observe('QuestTrackerGameController', 'OnUninitialize', function(this)
+        logger.info("Exited game Observe", this)
         DoGameSessionEnd()
+    end)
+
+    ObserveAfter("QuestTrackerGameController", "OnUninitialize", function(this)
+        logger.info("Exited game ObserveAfter", this)
+    end)
+
+    Observe("CCTVCamera", "TakeControl", function(this, val)
+        logger.info("Camera control:", this, val)
+    end)
+
+    ObserveAfter("CCTVCamera", "TakeControl", function(this, val)
+        logger.info("Camera control end:", this, val)
     end)
 
     local file = io.open("debug", "r")
