@@ -1,5 +1,5 @@
 UltraPlus = {
-    __VERSION     = '4.0-rc1',
+    __VERSION     = '4.0-rc2',
     __DESCRIPTION = 'Better Path Tracing, Ray Tracing and Hotfixes for CyberPunk',
     __URL         = 'https://github.com/sammilucia/cyberpunk-ultra-plus',
     __LICENSE     = [[
@@ -33,6 +33,7 @@ local config = {
     regirActive = false,
     nrdEnabled = false,
     gameLoaded = false,
+    FOV = 0.0,
 }
 local timer = {
     lazy = 0,
@@ -304,9 +305,10 @@ local function EnableRegir(state)
     Wait(seconds, function()
         SetOption("Editor/ReGIR", "UseForDI", state)
     end)
-    Wait(seconds, function()
+
+    if not GetOption("RayTracing", "EnableNRD") then
         SetOption("Editor/RTXDI", "EnableSeparateDenoising", state)
-    end)
+    end
     config.regirActive = state
 end
 
@@ -344,6 +346,17 @@ local function DoNrdFix(enabled)
 
     logger.info("Loading RR denoiser")
     LoadIni("denoiser_rr.ini")
+end
+
+function DoRefreshEngine()
+    -- hack to force the engine to warm reload
+    logger.info("Refreshing Engine...")
+    local jitter = 0.0001
+    Game.GetPlayer():GetFPPCameraComponent():SetFOV(config.FOV + jitter)
+    Wait(1.5, function()
+        Game.GetPlayer():GetFPPCameraComponent():SetFOV(config.FOV)
+        logger.info("Done. If there are still problems please (re)load a save game")
+    end)
 end
 
 local function DoGameSessionStart()
@@ -416,7 +429,7 @@ registerForEvent('onUpdate', function(delta)
         timer.fast = timer.fast + delta
         timer.lazy = timer.lazy + delta
 
-        -- prevent skipping temporal updates
+        -- prevent engine from skipping temporal updates when mouse/controller isn't moving
         Game.GetPlayer():GetFPPCameraComponent():SceneDisableBlendingToStaticPosition()
     end
 
@@ -449,8 +462,8 @@ registerForEvent("onTweak", function()
 end)
 
 registerForEvent("onInit", function()
-    -- config.gameLoaded = Game.GetPlayer() and Game.GetPlayer():IsAttached() and not Game.GetSystemRequestsHandler():IsPreGame() ---- already set at mod startup, plus this would always == false?
-
+    config.FOV = Game.GetPlayer():GetFPPCameraComponent():GetFOV()
+    
     Observe('QuestTrackerGameController', 'OnInitialize', function()
         DoGameSessionStart()
     end)
